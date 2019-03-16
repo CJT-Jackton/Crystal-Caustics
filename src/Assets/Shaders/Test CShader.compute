@@ -1,0 +1,21 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel TextureInterpolate
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+
+TextureCube<float> Tex0;
+TextureCube<float> Tex1;
+TextureCube<float> Tex2;
+
+float3 weight;
+
+[numthreads(8,8,1)]
+void TextureInterpolate (uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+	int x, y, z;
+
+    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+}

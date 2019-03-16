@@ -1,0 +1,24 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel TexInterpolate
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float> textureOut : register(u0);
+
+Texture2D<float> tex0 : register(t0);
+Texture2D<float> tex1 : register(t1);
+Texture2D<float> tex2 : register(t2);
+
+float3 weight;
+
+[numthreads(16, 16, 2)]
+void TexInterpolate(uint3 id : SV_DispatchThreadID)
+{
+	uint2 pos = id.xy;
+	pos.x += 256 * id.z;
+
+	//float pixel = 0.0f;
+	float pixel = weight.x * tex0[pos] + weight.y * tex1[pos] + weight.z * tex2[pos];
+
+	textureOut[pos] = pixel;
+}
