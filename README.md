@@ -14,3 +14,7 @@ For each object that has caustics when illuminated, surround it with a mesh boun
 1. Render the caustics of target object using [ray tracing](https://github.com/CJT-Jackton/RayTracing). To reduce complexity,  the light source is limited to one single directional light. Then for each light direction, store the caustics light into a cubemap. The direction is determined by the bounding mesh.
 
 2. In the real-time rendering, for each light sources calculate the caustics light by interpolate between the caustics cubemap. The interpolatation weight is determined by the barycentric coordinate of the triangle on the bounding mesh hit by the light ray.
+
+## Requirements
+
+Unity 2018.3.3f1
