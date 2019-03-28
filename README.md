@@ -9,6 +9,12 @@ Caustics is a common optical phenomenon that light ray reflected or refracted by
 
 ## Methodology
 
+#### Assumption
+
+1. The shape of the crystal is convex.
+2. The crystal is medium homogeneous.
+3. The crystal has the same refractive index for all wavelengths of light.
+
 For each object that has caustics when illuminated, surround it with a mesh bounding box. In the demo I used a [icosahedron](https://en.wikipedia.org/wiki/Icosahedron), but it can be alter to any convex shape. Each vertices of the bounding mesh mapping to one cubemap storing the caustics light.
 
 1. Render the caustics of target object using [ray tracing](https://github.com/CJT-Jackton/RayTracing). To reduce complexity,  the light source is limited to one single directional light. Then for each light direction, store the caustics light into a cubemap. The direction is determined by the bounding mesh.
