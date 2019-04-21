@@ -1,21 +1,23 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.Rendering;
 
 public class Caustics : MonoBehaviour
 {
+    #region Public Variables
     static public ComputeShader computeShader;
     static public int kernelId;
 
     static public RenderTexture causticsTexture;
+    #endregion
 
     // the light cookies of the caustics light
     static private Cubemap causticsCubemap;
 
     // the baked caustics cubemap
     public Cubemap[] cookieCubemap = new Cubemap[12];
-    private Texture2D[] cookieTexture = new Texture2D[12];
+    private Texture2DArray[] cookieTexture = new Texture2DArray[12];
 
+    private RenderTexture[] causticsRenderTextures = new RenderTexture[12];
 
     //public Texture2D tmp;
 
@@ -28,15 +30,48 @@ public class Caustics : MonoBehaviour
     // the mesh of the MeshCollider
     private Mesh meshCollider;
 
-    // Start is called before the first frame update
+    private RenderTexture _lightCookie;
+    public Texture2D tex2d;
+
+    private int[,] _vertices = new int[20, 3]{ { 2 , 3 , 7},
+        { 2, 8 ,3},
+        { 4 , 5 , 6},
+        {5 , 4 , 9},
+            {7 , 6 , 12},
+                { 6 , 7 , 11},
+                    { 10 , 11 , 3},
+                        { 11 , 10 , 4},
+                            {8 , 9 , 10},
+                                { 9,  8 , 1},
+                                    { 12 , 1 , 2},
+                                        {1 , 12 , 5},
+                                            {7 , 3 , 11},
+                                                { 2 , 7  ,12},
+                                                    { 4  ,6 , 11},
+                                                        { 6 , 5,  12},
+                                                            { 3 , 8 , 10},
+                                                                { 8 , 2 , 1},
+                                                                    { 4 , 10 , 9},
+                                                                        { 5,  9,  1 }};
+
+    #region Unity Methods
+
     void Start()
     {
+        _lightCookie = new RenderTexture(256, 256, 16);
+        _lightCookie.dimension = UnityEngine.Rendering.TextureDimension.Cube;
+        _lightCookie.hideFlags = HideFlags.HideAndDontSave;
+        _lightCookie.useMipMap = false;
+
         causticsLight = GetComponent<Light>();
 
         meshCollider = GetComponent<MeshCollider>().sharedMesh;
 
-        causticsTexture = new RenderTexture(256 * 6, 256, 32);
-        causticsTexture.dimension = UnityEngine.Rendering.TextureDimension.Tex2D;
+        causticsTexture = new RenderTexture(256, 256, 16);
+        causticsTexture.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
+        causticsTexture.volumeDepth = 6;
+        causticsTexture.format = RenderTextureFormat.Default;
+        causticsTexture.hideFlags = HideFlags.HideAndDontSave;
         causticsTexture.enableRandomWrite = true;
         causticsTexture.useMipMap = false;
         causticsTexture.Create();
@@ -44,14 +79,31 @@ public class Caustics : MonoBehaviour
 
         for (int i = 0; i < 12; ++i)
         {
-            cookieTexture[i] = ToTexture2D(cookieCubemap[i]);
+            cookieTexture[i] = ToTexture2DArray(cookieCubemap[i]);
+
+            causticsRenderTextures[i] = ToRenderTexture(cookieCubemap[i]);
         }
 
-        computeShader = Resources.Load<ComputeShader>("Shaders/TextureInterpolate");
-        
-        kernelId = computeShader.FindKernel("TexInterpolate");
+        for (int k = 0; k < 12; ++k)
+        {
+            if (k % 2 == 0)
+            {
+                for (int i = 0; i < 6; ++i)
+                {
+                    Graphics.CopyTexture(tex2d, 0, 0, causticsRenderTextures[k],
+                        i,
+                        0);
+                }
+            }
+        }
 
-        computeShader.SetTexture(kernelId, "textureOut", causticsTexture);
+        causticsLight.color = transform.parent.gameObject.GetComponent<Renderer>().material.color;
+
+        computeShader = Resources.Load<ComputeShader>("Shaders/TextureInterpolate");
+
+        kernelId = computeShader.FindKernel("TextureInterpolate");
+
+        computeShader.SetTexture(kernelId, "Result", causticsTexture);
 
         computeShader.SetVector("weight", new Vector4());
     }
@@ -97,6 +149,9 @@ public class Caustics : MonoBehaviour
         }
     }
 
+    #endregion
+
+
     private void SetCookie(RaycastHit hit)
     {
         int[] triangles = meshCollider.triangles;
@@ -125,19 +180,27 @@ public class Caustics : MonoBehaviour
 
         Vector3 w = hit.barycentricCoordinate;
 
-        causticsLight.color = w.x * c[0] + w.y * c[1] + w.z * c[2];
+        //causticsLight.color = w.x * c[0] + w.y * c[1] + w.z * c[2];
 
-        computeShader.SetTexture(kernelId, "tex0", cookieTexture[0]);
-        computeShader.SetTexture(kernelId, "tex1", cookieTexture[0]);
-        computeShader.SetTexture(kernelId, "tex2", cookieTexture[0]);
+        int[] index = {
+            _vertices[hit.triangleIndex, 0] - 1,
+            _vertices[hit.triangleIndex, 1] - 1,
+            _vertices[hit.triangleIndex, 2] - 1
+        };
+
+        Debug.Log(index[0] + "," + index[1] + "," + index[2]);
+
+        computeShader.SetTexture(kernelId, "Tex0", causticsRenderTextures[index[0]]);
+        computeShader.SetTexture(kernelId, "Tex1", causticsRenderTextures[index[1]]);
+        computeShader.SetTexture(kernelId, "Tex2", causticsRenderTextures[index[2]]);
 
         computeShader.SetVector("weight", new Vector4(w.x, w.y, w.z, 0.0f));
 
-        computeShader.Dispatch(kernelId, 16, 16, 3);
+        computeShader.Dispatch(kernelId, 32, 32, 1);
 
-        causticsCubemap = ToCubemap(causticsTexture);
+        ToCubemap(causticsTexture, ref _lightCookie);
 
-        causticsLight.cookie = cookieCubemap[0];
+        causticsLight.cookie = _lightCookie;
     }
 
     private Cubemap InterpolateTexture(Cubemap tex0, Cubemap tex1, Cubemap tex2, Vector3 weight)
@@ -170,6 +233,30 @@ public class Caustics : MonoBehaviour
         return result;
     }
 
+    private RenderTexture ToRenderTexture(Cubemap cubemap)
+    {
+        CubemapFace[] faces = new CubemapFace[] {
+            CubemapFace.PositiveX, CubemapFace.NegativeX,
+            CubemapFace.PositiveY, CubemapFace.NegativeY,
+            CubemapFace.PositiveZ, CubemapFace.NegativeZ
+        };
+
+        RenderTexture renderTexture = new RenderTexture(256, 256, 16);
+        renderTexture.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
+        renderTexture.volumeDepth = 6;
+        renderTexture.format = RenderTextureFormat.Default;
+        renderTexture.useMipMap = false;
+        renderTexture.Create();
+        renderTexture.filterMode = FilterMode.Point;
+
+        for (int i = 0; i < 6; ++i)
+        {
+            Graphics.CopyTexture(cubemap, i, 0, renderTexture, i, 0);
+        }
+
+        return renderTexture;
+    }
+
     private Cubemap ToCubemap(RenderTexture renderTexture)
     {
         CubemapFace[] faces = new CubemapFace[] {
@@ -182,12 +269,12 @@ public class Caustics : MonoBehaviour
 
         Texture2D cubemapHorizontal = new Texture2D(6 * renderTexture.height, renderTexture.height, TextureFormat.RGBA32, false);
         cubemapHorizontal.ReadPixels(new Rect(0, 0, renderTexture.height, renderTexture.height), 0, 0);
-        Texture2D tmp = new Texture2D(6 * renderTexture.height, renderTexture.height, TextureFormat.Alpha8, false);
+        Texture2D tmp = new Texture2D(6 * renderTexture.height, renderTexture.height, TextureFormat.RGB24, false);
         tmp.SetPixels(cubemapHorizontal.GetPixels());
 
         RenderTexture.active = null;
 
-        Cubemap cubemap = new Cubemap(renderTexture.height, TextureFormat.Alpha8, false);
+        Cubemap cubemap = new Cubemap(renderTexture.height, TextureFormat.RGB24, false);
 
         for (int i = 0; i < 6; ++i)
         {
@@ -197,7 +284,36 @@ public class Caustics : MonoBehaviour
         return cubemap;
     }
 
-    private Cubemap ToCubemap(Texture2DArray array)
+    private void ToCubemap(RenderTexture renderTexture, ref RenderTexture cubemapRenderTexture)
+    {
+        for (int i = 0; i < 6; ++i)
+        {
+            Graphics.CopyTexture(renderTexture, i, 0, cubemapRenderTexture, i, 0);
+        }
+    }
+
+    private void ToCubemap(RenderTexture[] renderTextures, ref Cubemap cubemap)
+    {
+        for (int i = 0; i < 6; ++i)
+        {
+            Graphics.CopyTexture(renderTextures[i], 0, 0, cubemap, i, 0);
+        }
+    }
+
+    private void ToRenderTextureArray(Cubemap cubemap, ref RenderTexture[] renderTextures)
+    {
+        for (int i = 0; i < 6; ++i)
+        {
+            Graphics.CopyTexture(cubemap, i, 0, renderTextures[i], 0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Convert the Texture2DArray into Cubemap.
+    /// </summary>
+    /// <param name="array"></param>
+    /// <param name="cubemap"></param>
+    private void ToCubemap(Texture2DArray array, ref Cubemap cubemap)
     {
         CubemapFace[] faces = new CubemapFace[] {
             CubemapFace.PositiveX, CubemapFace.NegativeX,
@@ -205,14 +321,10 @@ public class Caustics : MonoBehaviour
             CubemapFace.PositiveZ, CubemapFace.NegativeZ
         };
 
-        Cubemap cubemap = new Cubemap(array.width, array.format, false);
-
         for (int i = 0; i < 6; ++i)
         {
             cubemap.SetPixels(array.GetPixels(i), faces[i]);
         }
-
-        return cubemap;
     }
 
     private Texture2DArray ToTexture2DArray(Cubemap cubemap)

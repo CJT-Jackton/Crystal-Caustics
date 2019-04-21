@@ -1,24 +1,22 @@
 ﻿// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel TexInterpolate
+#pragma kernel TextureInterpolate
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float> textureOut : register(u0);
+RWTexture2DArray<float4> Result;
 
-Texture2D<float> tex0 : register(t0);
-Texture2D<float> tex1 : register(t1);
-Texture2D<float> tex2 : register(t2);
+Texture2DArray<float4> Tex0;
+Texture2DArray<float4> Tex1;
+Texture2DArray<float4> Tex2;
 
+// The weight of each texture.
 float3 weight;
 
-[numthreads(16, 16, 2)]
-void TexInterpolate(uint3 id : SV_DispatchThreadID)
+[numthreads(8, 8, 6)]
+void TextureInterpolate(uint3 id : SV_DispatchThreadID)
 {
-	uint2 pos = id.xy;
-	pos.x += 256 * id.z;
-
-	//float pixel = 0.0f;
-	float pixel = weight.x * tex0[pos] + weight.y * tex1[pos] + weight.z * tex2[pos];
-
-	textureOut[pos] = pixel;
+	// TODO: insert actual code here!
+	Result[int3(id.x, id.y, id.z)] = weight.x * Tex0[int3(id.x, id.y, id.z)] 
+		+ weight.y * Tex1[int3(id.x, id.y, id.z)] 
+		+ weight.z * Tex2[int3(id.x, id.y, id.z)];
 }

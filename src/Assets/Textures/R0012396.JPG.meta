@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 08b29da4f12f3aa4ba539f622cd448fa
+guid: bba71662f9fd7c340a6b3491e731096f
 TextureImporter:
   fileIDToRecycleName:
     8900000: generatedCubemap
@@ -49,10 +49,10 @@ TextureImporter:
   spritePixelsToUnits: 100
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
-  alphaUsage: 1
+  alphaUsage: 2
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
-  textureType: 4
+  textureType: 0
   textureShape: 2
   singleChannelComponent: 0
   maxTextureSizeSet: 0
@@ -93,7 +93,7 @@ TextureImporter:
     overridden: 0
     androidETC2FallbackOverride: 0
   - serializedVersion: 2
-    buildTarget: WebGL
+    buildTarget: Windows Store Apps
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -104,7 +104,7 @@ TextureImporter:
     overridden: 0
     androidETC2FallbackOverride: 0
   - serializedVersion: 2
-    buildTarget: Windows Store Apps
+    buildTarget: WebGL
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1

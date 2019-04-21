@@ -3,19 +3,40 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float4> Result;
+RWTexture2DArray<float3> Result;
 
-TextureCube<float> Tex0;
-TextureCube<float> Tex1;
-TextureCube<float> Tex2;
+//Texture2DArray<float3> Tex0;
+//TextureCube<float> Tex1;
+//TextureCube<float> Tex2;
 
 float3 weight;
 
-[numthreads(8,8,1)]
-void TextureInterpolate (uint3 id : SV_DispatchThreadID)
-{
-    // TODO: insert actual code here!
-	int x, y, z;
+// Includes xyz_to_uvw, uvw_to_xyz, xyz_to_side, xyz_to_uvw_force_side based on a macro for shaders
+#include "CubemapTransform.cs"
 
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+[numthreads(8, 8, 1)]
+void TextureInterpolate(uint3 id : SV_DispatchThreadID)
+{
+	// TODO: insert actual code here!
+
+	for (int i = 0; i < 6; ++i) {
+		// Colors the texture based on the xyz of the cubemap
+		float3 uvw = float3(float(id.x) / (i_dimensions - 1), float(id.y) / (i_dimensions - 1), i);
+		float3 xyz = abs(uvw_to_xyz(uvw));
+
+		// This just puts a unique colored dot in the middle of the texture for each side
+		// (Not important)
+		{
+			float dist = length(xyz);
+			float3 centerColor = float3( // Find the color of the dot for this side
+				i / 2 == 0 || (i & 1 && i / 2 == 1),
+				i / 2 == 1 || (i & 1 && i / 2 == 2),
+				i / 2 == 2 || (i & 1 && i / 2 == 0));
+			if (dist < 1.03) xyz = float3(0, 0, 0); // Outline
+			if (dist < 1.02) xyz = centerColor; // Dot
+		}
+
+		o_cubeMap[int3(id.x, id.y, i)] = float4(xyz, 1);
+
+	}
 }
