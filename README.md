@@ -23,4 +23,7 @@ For each object that has caustics when illuminated, surround it with a mesh boun
 
 ## Requirements
 
-Unity 2018.3.3f1
+Unity 2019.1.0
+
+- HD Render Pipeline
+- Post Processing Stack v2
