@@ -8,15 +8,18 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: M_Test
-  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}
-  m_ShaderKeywords: 
+  m_Shader: {fileID: 4800000, guid: 6e4ae4064600d784cac1e41a9e6f2e59, type: 3}
+  m_ShaderKeywords: _NORMALMAP_TANGENT_SPACE
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 2000
   stringTagMap: {}
   disabledShaderPasses:
   - DistortionVectors
+  - TransparentDepthPrepass
+  - TransparentDepthPostpass
+  - TransparentBackface
   - MOTIONVECTORS
   m_SavedProperties:
     serializedVersion: 3
@@ -26,7 +29,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseColorMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: c0296f739aa6a364eba4a9d75c6c0f11, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BentNormalMap:
@@ -86,7 +89,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: c0296f739aa6a364eba4a9d75c6c0f11, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskMap:
@@ -221,7 +224,7 @@ Material:
     - _IridescenceThickness: 1
     - _LinkDetailsWithBase: 1
     - _MaterialID: 1
-    - _Metallic: 0
+    - _Metallic: 0.455
     - _Mode: 0
     - _NormalMapSpace: 0
     - _NormalScale: 1
@@ -237,7 +240,7 @@ Material:
     - _SSRefractionProjectionModel: 0
     - _ShiverDirectionality: 0.5
     - _ShiverDrag: 0.2
-    - _Smoothness: 0.5
+    - _Smoothness: 1
     - _SmoothnessRemapMax: 1
     - _SmoothnessRemapMin: 0
     - _SmoothnessTextureChannel: 0
@@ -245,13 +248,13 @@ Material:
     - _SpecularAAThreshold: 0.2
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _StencilRef: 0
-    - _StencilRefDepth: 32
+    - _StencilRef: 2
+    - _StencilRefDepth: 0
     - _StencilRefGBuffer: 2
-    - _StencilRefMV: 160
+    - _StencilRefMV: 128
     - _StencilWriteMask: 3
     - _StencilWriteMaskDepth: 48
-    - _StencilWriteMaskGBuffer: 3
+    - _StencilWriteMaskGBuffer: 51
     - _StencilWriteMaskMV: 176
     - _Stiffness: 1
     - _SubsurfaceMask: 1
@@ -273,14 +276,14 @@ Material:
     - _UVSec: 0
     - _UseEmissiveIntensity: 0
     - _UseShadowThreshold: 0
-    - _ZTestDepthEqualForOpaque: 4
+    - _ZTestDepthEqualForOpaque: 3
     - _ZTestGBuffer: 4
     - _ZTestModeDistortion: 4
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _BaseColorMap_MipInfo: {r: 0, g: 0, b: 0, a: 0}
-    - _Color: {r: 1, g: 0, b: 0, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DiffusionProfileAsset: {r: 0, g: 0, b: 0, a: 0}
     - _DoubleSidedConstants: {r: 1, g: 1, b: -1, a: 0}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}

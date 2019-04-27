@@ -5,18 +5,72 @@
 // with cs.SetTexture
 RWTexture2DArray<float4> Result;
 
-Texture2DArray<float4> Tex0;
-Texture2DArray<float4> Tex1;
-Texture2DArray<float4> Tex2;
+Texture2DArray<float4> Tex[12];
 
-// The weight of each texture.
-float3 weight;
+int3 index;
+
+float4 weight;
+
+float4 SampleTex(int index, int3 pos)
+{
+	if (index == 0)
+	{
+		return Tex[0][pos];
+	}
+	else if (index == 1)
+	{
+		return Tex[1][pos];
+	}
+	else if (index == 2)
+	{
+		return Tex[2][pos];
+	}
+	else if (index == 3)
+	{
+		return Tex[3][pos];
+	}
+	else if (index == 4)
+	{
+		return Tex[4][pos];
+	}
+	else if (index == 5)
+	{
+		return Tex[5][pos];
+	}
+	else if (index == 6)
+	{
+		return Tex[6][pos];
+	}
+	else if (index == 7)
+	{
+		return Tex[7][pos];
+	}
+	else if (index == 8)
+	{
+		return Tex[8][pos];
+	}
+	else if (index == 9)
+	{
+		return Tex[9][pos];
+	}
+	else if (index == 10)
+	{
+		return Tex[10][pos];
+	}
+	else
+	{
+		return Tex[11][pos];
+	}
+}
 
 [numthreads(8, 8, 6)]
 void TextureInterpolate(uint3 id : SV_DispatchThreadID)
 {
 	// TODO: insert actual code here!
-	Result[int3(id.x, id.y, id.z)] = weight.x * Tex0[int3(id.x, id.y, id.z)] 
-		+ weight.y * Tex1[int3(id.x, id.y, id.z)] 
-		+ weight.z * Tex2[int3(id.x, id.y, id.z)];
+	float4 Color0 = SampleTex(index.x, int3(id.x, id.y, id.z));
+	float4 Color1 = SampleTex(index.y, int3(id.x, id.y, id.z));
+	float4 Color2 = SampleTex(index.z, int3(id.x, id.y, id.z));
+
+	Result[int3(id.x, id.y, id.z)] = 
+		weight.x * Color0 + weight.y * Color1 + weight.z * Color2;
 }

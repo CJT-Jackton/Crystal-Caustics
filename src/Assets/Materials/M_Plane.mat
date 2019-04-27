@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: M_Plane
   m_Shader: {fileID: 4800000, guid: 6e4ae4064600d784cac1e41a9e6f2e59, type: 3}
-  m_ShaderKeywords: _NORMALMAP_TANGENT_SPACE
+  m_ShaderKeywords: _MASKMAP _NORMALMAP_TANGENT_SPACE
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -29,7 +29,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseColorMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: c0296f739aa6a364eba4a9d75c6c0f11, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BentNormalMap:
@@ -89,11 +89,11 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: c0296f739aa6a364eba4a9d75c6c0f11, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 5978a21a3162d024c94aa69d94303892, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
@@ -142,7 +142,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _AORemapMax: 1
-    - _AORemapMin: 0
+    - _AORemapMin: 1
     - _ATDistance: 1
     - _AlbedoAffectEmissive: 0
     - _AlphaCutoff: 0.5
@@ -216,7 +216,7 @@ Material:
     - _IridescenceThickness: 1
     - _LinkDetailsWithBase: 0
     - _MaterialID: 1
-    - _Metallic: 0
+    - _Metallic: 0.952
     - _Mode: 0
     - _NormalMapSpace: 0
     - _NormalScale: 1
@@ -234,7 +234,7 @@ Material:
     - _ShiverDirectionality: 0.5
     - _ShiverDrag: 0.2
     - _Smoothness: 0.661
-    - _SmoothnessRemapMax: 0
+    - _SmoothnessRemapMax: 1
     - _SmoothnessRemapMin: 0
     - _SmoothnessTextureChannel: 0
     - _SpecularAAScreenSpaceVariance: 0.1
