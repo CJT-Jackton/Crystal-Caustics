@@ -21,11 +21,24 @@ public class Caustics : MonoBehaviour
 
     #region Private Variables
 
+    /// <summary>
+    /// The texture interpolation compute shader.
+    /// </summary>
     private ComputeShader _computeShader;
+
+    /// <summary>
+    /// The kernel id of the texture interpolation.
+    /// </summary>
     private int _kernelId;
 
+    /// <summary>
+    /// The caustics map render texture in texture2d array form.
+    /// </summary>
     private RenderTexture _causticsTexture;
 
+    /// <summary>
+    /// The caustics map render texture. 
+    /// </summary>
     private RenderTexture[] _causticsRenderTextures = new RenderTexture[12];
 
     // the light cookies of the caustics light
@@ -102,6 +115,18 @@ public class Caustics : MonoBehaviour
                     if (hit.collider == _meshCollider)
                     {
                         SetCookie(hit);
+
+                        Vector3 dirLocal =
+                            transform.InverseTransformDirection(direction);
+
+                        Matrix4x4 m = GetRotationMatrix(dirLocal);
+                        //Debug.Log($"{(m * direction).ToString("F4")}");
+
+                        //Vector3 uvw = CubemapTransform.CubemapExtensions.XyzToUvw(direction);
+                        //Vector3 xyz = CubemapTransform.CubemapExtensions.UvwToXyz(uvw);
+                        //Debug.Log($"{xyz.ToString("F4")}");
+
+                        _computeShader.SetMatrix("rMatrix", m);
                     }
                 }
             }
@@ -114,33 +139,6 @@ public class Caustics : MonoBehaviour
 
     private void SetCookie(RaycastHit hit)
     {
-        int[] triangles = _mesh.triangles;
-
-        int[] vertices = {
-            triangles[hit.triangleIndex * 3 + 0],
-            triangles[hit.triangleIndex * 3 + 1],
-            triangles[hit.triangleIndex * 3 + 2]
-        };
-
-        //Debug.Log("Triangle " + hit.triangleIndex + ": (" + vertices[0] + ", " + vertices[1] + ", " + vertices[2] + ")");
-
-        Color[] c = { new Color(), new Color(), new Color() };
-
-        Vector4 v = _mesh.vertices[vertices[0]];
-        v = v * 0.5f + new Vector4(0.5f, 0.5f, 0.5f, 0.5f);
-        c[0] = v;
-
-        v = _mesh.vertices[vertices[1]];
-        v = v * 0.5f + new Vector4(0.5f, 0.5f, 0.5f, 0.5f);
-        c[1] = v;
-
-        v = _mesh.vertices[vertices[2]];
-        v = v * 0.5f + new Vector4(0.5f, 0.5f, 0.5f, 0.5f);
-        c[2] = v;
-
-        //Vector3 w = hit.barycentricCoordinate;
-        //causticsLight.color = w.x * c[0] + w.y * c[1] + w.z * c[2];
-
         int[] index = {
             _triangleIndex[hit.triangleIndex, 0],
             _triangleIndex[hit.triangleIndex, 1],
@@ -160,10 +158,43 @@ public class Caustics : MonoBehaviour
         _causticsLight.cookie = _lightCookie;
     }
 
+    private Matrix4x4 GetRotationMatrix(Vector3 lightDirection)
+    {
+        Vector3 B = new Vector3(0,-1,0);
+
+        float sin = Vector3.Cross(lightDirection, B).magnitude;
+        float cos = Vector3.Dot(lightDirection, B);
+
+        Matrix4x4 G = new Matrix4x4();
+        G[0, 0] = cos;
+        G[0, 1] = -sin;
+        G[1, 0] = sin;
+        G[1, 1] = cos;
+        G[2, 2] = 1;
+
+        Vector3 u = lightDirection;
+        Vector3 v = (B - cos * lightDirection).normalized;
+        Vector3 w = Vector3.Cross(B, lightDirection);
+
+        Matrix4x4 F = new Matrix4x4();
+        F.SetRow(0, u);
+        F.SetRow(1, v);
+        F.SetRow(2, w);
+        F[3, 3] = 1;
+
+        Matrix4x4 U = F.inverse * G * F;
+        //Debug.Log(U.ToString("F4"));
+
+        return U;
+    }
+
     #endregion
 
     #region Initialize Functions
 
+    /// <summary>
+    /// Calculate the vertex index mapping of the mesh of the collider.
+    /// </summary>
     private void InitTriangleIndex()
     {
         _triangleIndex = new int[_mesh.triangles.Length / 3, 3];
@@ -189,15 +220,25 @@ public class Caustics : MonoBehaviour
                 _triangleIndex[i, j] = map[_mesh.triangles[i * 3 + j]];
             }
         }
+
+        for (int i = 0; i < 12; ++i)
+        {
+            //Debug.Log($"{i}: ({_mesh.vertices[i].x / 2}, {_mesh.vertices[i].z / 2}, {_mesh.vertices[i].y / 2})");
+        }
     }
 
+    /// <summary>
+    /// Initialize the cookie textures and render textures.
+    /// </summary>
     private void InitTextures()
     {
+        // initialize the caustics light cookie
         _lightCookie = new RenderTexture(256, 256, 16);
         _lightCookie.dimension = TextureDimension.Cube;
         _lightCookie.hideFlags = HideFlags.HideAndDontSave;
         _lightCookie.useMipMap = false;
 
+        // initialize the caustics light cookie texture2d array
         _causticsTexture = new RenderTexture(256, 256, 16);
         _causticsTexture.dimension = TextureDimension.Tex2DArray;
         _causticsTexture.volumeDepth = 6;
@@ -210,6 +251,7 @@ public class Caustics : MonoBehaviour
 
         for (int i = 0; i < 12; ++i)
         {
+            // convert the cubemap(CPU) to texture2d array render texture(GPU)
             _causticsRenderTextures[i] = ToRenderTexture(cookieCubemap[i]);
         }
 
@@ -219,23 +261,22 @@ public class Caustics : MonoBehaviour
             {
                 for (int i = 0; i < 6; ++i)
                 {
-                    Graphics.CopyTexture(tex2d1, 0, 0, _causticsRenderTextures[k],
-                        i,
-                        0);
+                    Graphics.CopyTexture(tex2d1, 0, 0, _causticsRenderTextures[k], i, 0);
                 }
             }
             else if (k % 3 == 2)
             {
                 for (int i = 0; i < 6; ++i)
                 {
-                    Graphics.CopyTexture(tex2d2, 0, 0, _causticsRenderTextures[k],
-                        i,
-                        0);
+                    //Graphics.CopyTexture(tex2d2, 0, 0, _causticsRenderTextures[k], i, 0);
                 }
             }
         }
     }
 
+    /// <summary>
+    /// Set up the compute shader parameters.
+    /// </summary>
     private void InitComputeShader()
     {
         _computeShader = Resources.Load<ComputeShader>("Shaders/TextureInterpolate");
