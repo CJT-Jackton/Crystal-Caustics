@@ -21,6 +21,15 @@ public class Caustics : MonoBehaviour
 
     #region Private Variables
 
+    private struct SampleData
+    {
+        public Vector4 sampleIndex;
+        public Vector4 sampleWeight;
+        public Matrix4x4[] sampleMatrix;
+    };
+
+    private SampleData[] _sampleData = new SampleData[1];
+
     /// <summary>
     /// The texture interpolation compute shader.
     /// </summary>
@@ -30,6 +39,8 @@ public class Caustics : MonoBehaviour
     /// The kernel id of the texture interpolation.
     /// </summary>
     private int _kernelId;
+
+    private ComputeBuffer _sampleBuffer;
 
     /// <summary>
     /// The caustics map render texture in texture2d array form.
@@ -114,30 +125,35 @@ public class Caustics : MonoBehaviour
                 {
                     if (hit.collider == _meshCollider)
                     {
-                        SetCookie(hit);
-
                         Vector3 dirLocal =
                             transform.InverseTransformDirection(direction);
 
-                        Matrix4x4 m = GetRotationMatrix(dirLocal);
+                        SetCookie(hit, dirLocal);
+
+                        //Matrix4x4 m = GetRotationMatrix(dirLocal,8);
                         //Debug.Log($"{(m * direction).ToString("F4")}");
 
                         //Vector3 uvw = CubemapTransform.CubemapExtensions.XyzToUvw(direction);
                         //Vector3 xyz = CubemapTransform.CubemapExtensions.UvwToXyz(uvw);
                         //Debug.Log($"{xyz.ToString("F4")}");
 
-                        _computeShader.SetMatrix("rMatrix", m);
+                        //_computeShader.SetMatrix("rMatrix", m);
                     }
                 }
             }
         }
     }
 
+    private void OnDestroy()
+    {
+        _sampleBuffer.Dispose();
+    }
+
     #endregion
 
     #region Utility Methods
 
-    private void SetCookie(RaycastHit hit)
+    private void SetCookie(RaycastHit hit, Vector3 lightDirection)
     {
         int[] index = {
             _triangleIndex[hit.triangleIndex, 0],
@@ -145,8 +161,21 @@ public class Caustics : MonoBehaviour
             _triangleIndex[hit.triangleIndex, 2]
         };
 
-        _computeShader.SetInts("index", index);
-        _computeShader.SetVector("weight", hit.barycentricCoordinate);
+        _sampleData[0].sampleIndex = new Vector4(index[0], index[1], index[2], 0.0f);
+        _sampleData[0].sampleWeight = hit.barycentricCoordinate;
+        
+        _sampleData[0].sampleMatrix[index[0]] = GetRotationMatrix(lightDirection, index[0]);
+        _sampleData[0].sampleMatrix[index[1]] = GetRotationMatrix(lightDirection, index[1]);
+        _sampleData[0].sampleMatrix[index[2]] = GetRotationMatrix(lightDirection, index[2]);
+
+        //_sampleBuffer.SetData(_sampleData);
+
+        _computeShader.SetInts("sampleIndex", index);
+        _computeShader.SetVector("sampleWeight", hit.barycentricCoordinate);
+
+        //_computeShader.SetMatrix("rMatrix", GetRotationMatrix(lightDirection, 2));
+
+        _computeShader.SetMatrixArray("sampleMatrix", _sampleData[0].sampleMatrix);
 
         _computeShader.Dispatch(_kernelId, 32, 32, 1);
 
@@ -158,9 +187,18 @@ public class Caustics : MonoBehaviour
         _causticsLight.cookie = _lightCookie;
     }
 
-    private Matrix4x4 GetRotationMatrix(Vector3 lightDirection)
+    /// <summary>
+    /// The rotation matrix align vector A to vector B.
+    /// https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
+    /// </summary>
+    /// <param name="lightDirection"></param>
+    /// <param name="vertexIndex"></param>
+    /// <returns></returns>
+    private Matrix4x4 GetRotationMatrix(Vector3 lightDirection, int vertexIndex)
     {
-        Vector3 B = new Vector3(0,-1,0);
+        Vector3 B = -_mesh.vertices[vertexIndex].normalized;
+        B = new Vector3(B.x, B.y, -B.z);
+        //Vector3 B = -_mesh.vertices[vertexIndex].normalized;
 
         float sin = Vector3.Cross(lightDirection, B).magnitude;
         float cos = Vector3.Dot(lightDirection, B);
@@ -183,7 +221,6 @@ public class Caustics : MonoBehaviour
         F[3, 3] = 1;
 
         Matrix4x4 U = F.inverse * G * F;
-        //Debug.Log(U.ToString("F4"));
 
         return U;
     }
@@ -223,7 +260,7 @@ public class Caustics : MonoBehaviour
 
         for (int i = 0; i < 12; ++i)
         {
-            //Debug.Log($"{i}: ({_mesh.vertices[i].x / 2}, {_mesh.vertices[i].z / 2}, {_mesh.vertices[i].y / 2})");
+            Debug.Log($"{i}: ({_mesh.vertices[i].x / 2}, {-_mesh.vertices[i].z / 2}, {_mesh.vertices[i].y / 2})");
         }
     }
 
@@ -255,22 +292,9 @@ public class Caustics : MonoBehaviour
             _causticsRenderTextures[i] = ToRenderTexture(cookieCubemap[i]);
         }
 
-        for (int k = 0; k < 12; ++k)
+        for (int i = 0; i < 6; ++i)
         {
-            if (k % 3 == 1)
-            {
-                for (int i = 0; i < 6; ++i)
-                {
-                    Graphics.CopyTexture(tex2d1, 0, 0, _causticsRenderTextures[k], i, 0);
-                }
-            }
-            else if (k % 3 == 2)
-            {
-                for (int i = 0; i < 6; ++i)
-                {
-                    //Graphics.CopyTexture(tex2d2, 0, 0, _causticsRenderTextures[k], i, 0);
-                }
-            }
+            //Graphics.CopyTexture(tex2d2, 0, 0, _causticsRenderTextures[1], i, 0);
         }
     }
 
@@ -279,8 +303,17 @@ public class Caustics : MonoBehaviour
     /// </summary>
     private void InitComputeShader()
     {
-        _computeShader = Resources.Load<ComputeShader>("Shaders/TextureInterpolate");
+        _computeShader = Instantiate(Resources.Load<ComputeShader>("Shaders/TextureInterpolate"));
         _kernelId = _computeShader.FindKernel("TextureInterpolate");
+
+        int bufferSize = sizeof(int) * 3 + sizeof(float) * (4 + 12 * 16);
+        _sampleBuffer = new ComputeBuffer(1, bufferSize);
+
+        _sampleData[0].sampleIndex = new Vector4();
+        _sampleData[0].sampleWeight = new Vector4();
+        _sampleData[0].sampleMatrix = new Matrix4x4[12];
+
+        //_sampleBuffer.SetData(_sampleData);
 
         _computeShader.SetTexture(_kernelId, "Result", _causticsTexture);
 
@@ -346,9 +379,13 @@ public class Caustics : MonoBehaviour
 
     private void ToCubemap(RenderTexture renderTexture, ref RenderTexture cubemapRenderTexture)
     {
-        for (int i = 0; i < 6; ++i)
+        if (cubemapRenderTexture != null)
         {
-            Graphics.CopyTexture(renderTexture, i, 0, cubemapRenderTexture, i, 0);
+            for (int i = 0; i < 6; ++i)
+            {
+                Graphics.CopyTexture(renderTexture, i, 0, cubemapRenderTexture,
+                    i, 0);
+            }
         }
     }
 
