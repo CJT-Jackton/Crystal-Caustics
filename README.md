@@ -1,23 +1,27 @@
 # Crystal Caustics
 
-This project approximate caustics of crystal in real-time using the physically accurated caustics rendered offline.
+This project approximate caustics of crystal in real-time using the physically-based caustics rendered offline.
 
-![thumbnail](https://raw.githubusercontent.com/CJT-Jackton/Crystal-Caustics/master/screenshots/crystal_render_by_Cinema4D.jpg "Crystal rendered by Cinema4D")
-> *Caustics of crystal (rendered by Cinema4D)*
+![thumbnail](https://raw.githubusercontent.com/CJT-Jackton/Crystal-Caustics/master/screenshots/screenshot01.png "Crystal caustics in Unity")
+> *Caustics of crystals*
 
 Caustics is a common optical phenomenon that light ray reflected or refracted by an object and created a pattern of light. It usually required track the path of light ray go through the object. However ray tracing is too computationally expensive and can't be done in real-time.
 
+## Getting started
+
+1. Install [High Definition Render Pipeline](https://blogs.unity3d.com/2018/09/24/the-high-definition-render-pipeline-getting-started-guide-for-artists/).
+
+2. Change the setting in the HDRP asset: **Lighting** > **Cookies** > **Point light cookie size** > **Resolution 256**.
+
+![setting](https://raw.githubusercontent.com/CJT-Jackton/Crystal-Caustics/master/screenshots/HDRPAssetSetting.PNG "Change the light cookie setting")
+
+3. (*Optional*) Install Unity HDRI pack.
+
 ## Methodology
-
-#### Assumption
-
-1. The shape of the crystal is convex.
-2. The crystal is medium homogeneous.
-3. The crystal has the same refractive index for all wavelengths of light.
 
 For each object that has caustics when illuminated, surround it with a mesh bounding box. In the demo I used a [icosahedron](https://en.wikipedia.org/wiki/Icosahedron), but it can be alter to any convex shape. Each vertices of the bounding mesh mapping to one cubemap storing the caustics light.
 
-1. Render the caustics of target object using [ray tracing](https://github.com/CJT-Jackton/RayTracing). To reduce complexity,  the light source is limited to one single directional light. Then for each light direction, store the caustics light into a cubemap. The direction is determined by the bounding mesh.
+1. Render the caustics of target object using photon mapping. To reduce complexity, the light source is limited to one single directional light. Then for each light directions, store the caustics light into a cubemap. The direction is determined by the bounding mesh.
 
 2. In the real-time rendering, for each light sources calculate the caustics light by interpolate between the caustics cubemap. The interpolatation weight is determined by the barycentric coordinate of the triangle on the bounding mesh hit by the light ray.
 
