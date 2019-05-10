@@ -88,21 +88,11 @@ RWTexture2DArray<float4> Result;
 
 Texture2DArray<float4> Tex[12];
 
-struct sampleData {
-	float4 sampleIndex;
-	float4 sampleWeight;
-	float3x3 sampleMatrix[12];
-};
-
 int3 sampleIndex;
 
 float4 sampleWeight;
 
-//float3x3 rMatrix;
-
 float4x4 sampleMatrix[12];
-
-RWStructuredBuffer<sampleData> sampleBuffer;
 
 float4 SampleTexOffset(int index, int3 pos)
 {

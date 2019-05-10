@@ -65,9 +65,6 @@ public class Caustics : MonoBehaviour
 
     #endregion
 
-    public Texture2D tex2d1;
-    public Texture2D tex2d2;
-
     public RenderTexture _testCookie;
 
     #region Unity Methods
@@ -129,15 +126,6 @@ public class Caustics : MonoBehaviour
                             transform.InverseTransformDirection(direction);
 
                         SetCookie(hit, dirLocal);
-
-                        //Matrix4x4 m = GetRotationMatrix(dirLocal,8);
-                        //Debug.Log($"{(m * direction).ToString("F4")}");
-
-                        //Vector3 uvw = CubemapTransform.CubemapExtensions.XyzToUvw(direction);
-                        //Vector3 xyz = CubemapTransform.CubemapExtensions.UvwToXyz(uvw);
-                        //Debug.Log($"{xyz.ToString("F4")}");
-
-                        //_computeShader.SetMatrix("rMatrix", m);
                     }
                 }
             }
@@ -182,7 +170,7 @@ public class Caustics : MonoBehaviour
         _lightCookie.Release();
 
         ToCubemap(_causticsTexture, ref _lightCookie);
-        ToCubemap(_causticsTexture, ref _testCookie);
+        //ToCubemap(_causticsTexture, ref _testCookie);
 
         _causticsLight.cookie = _lightCookie;
     }
@@ -196,9 +184,9 @@ public class Caustics : MonoBehaviour
     /// <returns></returns>
     private Matrix4x4 GetRotationMatrix(Vector3 lightDirection, int vertexIndex)
     {
-        Vector3 B = -_mesh.vertices[vertexIndex].normalized;
-        B = new Vector3(B.x, B.y, -B.z);
         //Vector3 B = -_mesh.vertices[vertexIndex].normalized;
+        //B = new Vector3(B.x, B.y, -B.z);
+        Vector3 B = -_mesh.vertices[vertexIndex].normalized;
 
         float sin = Vector3.Cross(lightDirection, B).magnitude;
         float cos = Vector3.Dot(lightDirection, B);
@@ -273,7 +261,7 @@ public class Caustics : MonoBehaviour
         _lightCookie = new RenderTexture(256, 256, 16);
         _lightCookie.dimension = TextureDimension.Cube;
         _lightCookie.hideFlags = HideFlags.HideAndDontSave;
-        _lightCookie.useMipMap = false;
+        _lightCookie.useMipMap = true;
 
         // initialize the caustics light cookie texture2d array
         _causticsTexture = new RenderTexture(256, 256, 16);
@@ -288,7 +276,7 @@ public class Caustics : MonoBehaviour
 
         for (int i = 0; i < 12; ++i)
         {
-            // convert the cubemap(CPU) to texture2d array render texture(GPU)
+            // convert the cubemap to texture2d array render texture
             _causticsRenderTextures[i] = ToRenderTexture(cookieCubemap[i]);
         }
 
