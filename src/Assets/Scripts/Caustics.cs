@@ -21,15 +21,6 @@ public class Caustics : MonoBehaviour
 
     #region Private Variables
 
-    private struct SampleData
-    {
-        public Vector4 sampleIndex;
-        public Vector4 sampleWeight;
-        public Matrix4x4[] sampleMatrix;
-    };
-
-    private SampleData[] _sampleData = new SampleData[1];
-
     /// <summary>
     /// The texture interpolation compute shader.
     /// </summary>
@@ -39,8 +30,6 @@ public class Caustics : MonoBehaviour
     /// The kernel id of the texture interpolation.
     /// </summary>
     private int _kernelId;
-
-    private ComputeBuffer _sampleBuffer;
 
     /// <summary>
     /// The caustics map render texture in texture2d array form.
@@ -55,13 +44,32 @@ public class Caustics : MonoBehaviour
     // the light cookies of the caustics light
     private RenderTexture _lightCookie;
 
-    // the caustics light
+    /// <summary>
+    /// The point light that used to cast caustics.
+    /// </summary>
     private Light _causticsLight;
 
     private MeshCollider _meshCollider;
     private Mesh _mesh;
 
+    private int[] _sampleIndex;
+
+    private Vector3 _sampleWeight;
+
+    /// <summary>
+    /// The sample correction matrix for each caustics map.
+    /// </summary>
+    private Matrix4x4[] _sampleMatrix;
+
+    /// <summary>
+    /// The vertex index of triangle got hit.
+    /// </summary>
     private int[,] _triangleIndex;
+
+    /// <summary>
+    /// The layer mask use for ray cast collision test.
+    /// </summary>
+    private int _layerMask;
 
     #endregion
 
@@ -81,6 +89,8 @@ public class Caustics : MonoBehaviour
 
         _meshCollider = GetComponent<MeshCollider>();
         _mesh = GetComponent<MeshCollider>().sharedMesh;
+
+        _layerMask = 1 << gameObject.layer;
 
         InitTriangleIndex();
         InitComputeShader();
@@ -118,61 +128,70 @@ public class Caustics : MonoBehaviour
                     direction = transform.position - light.transform.position;
                 }
 
-                if (Physics.Raycast(origin, direction, out hit))
+                if (Physics.Raycast(origin, direction, out hit, 2, _layerMask))
                 {
                     if (hit.collider == _meshCollider)
                     {
                         Vector3 dirLocal =
                             transform.InverseTransformDirection(direction);
 
-                        SetCookie(hit, dirLocal);
+                        SetComputeShaderParameter(hit, dirLocal);
+                        RunComputeShader();
                     }
                 }
+
+                _lightCookie.Release();
+
+                ToCubemap(_causticsTexture, ref _lightCookie);
+                //ToCubemap(_causticsTexture, ref _testCookie);
+
+                _causticsLight.cookie = _lightCookie;
+
+                Color lightColor = light.color;
+                lightColor *= transform.parent.gameObject.GetComponent<Renderer>().material.color;
+                float absorbDistance = transform.parent.gameObject
+                    .GetComponent<Renderer>().material
+                    .GetFloat("_ATDistance");
+                lightColor *= transform.parent.gameObject
+                    .GetComponent<Renderer>().material
+                    .GetColor("_TransmittanceColor");
+                //_causticsLight.color = lightColor;
             }
         }
-    }
-
-    private void OnDestroy()
-    {
-        _sampleBuffer.Dispose();
     }
 
     #endregion
 
     #region Utility Methods
 
-    private void SetCookie(RaycastHit hit, Vector3 lightDirection)
+    /// <summary>
+    /// Set up the compute shader variables.
+    /// </summary>
+    /// <param name="hit">The hit info.</param>
+    /// <param name="lightDirection">The light direction.</param>
+    private void SetComputeShaderParameter(RaycastHit hit, Vector3 lightDirection)
     {
-        int[] index = {
-            _triangleIndex[hit.triangleIndex, 0],
-            _triangleIndex[hit.triangleIndex, 1],
-            _triangleIndex[hit.triangleIndex, 2]
-        };
+        _sampleIndex[0] = _triangleIndex[hit.triangleIndex, 0];
+        _sampleIndex[1] = _triangleIndex[hit.triangleIndex, 1];
+        _sampleIndex[2] = _triangleIndex[hit.triangleIndex, 2];
 
-        _sampleData[0].sampleIndex = new Vector4(index[0], index[1], index[2], 0.0f);
-        _sampleData[0].sampleWeight = hit.barycentricCoordinate;
-        
-        _sampleData[0].sampleMatrix[index[0]] = GetRotationMatrix(lightDirection, index[0]);
-        _sampleData[0].sampleMatrix[index[1]] = GetRotationMatrix(lightDirection, index[1]);
-        _sampleData[0].sampleMatrix[index[2]] = GetRotationMatrix(lightDirection, index[2]);
+        _sampleWeight = hit.barycentricCoordinate;
 
-        //_sampleBuffer.SetData(_sampleData);
+        _sampleMatrix[_sampleIndex[0]] = GetRotationMatrix(lightDirection, _sampleIndex[0]);
+        _sampleMatrix[_sampleIndex[1]] = GetRotationMatrix(lightDirection, _sampleIndex[1]);
+        _sampleMatrix[_sampleIndex[2]] = GetRotationMatrix(lightDirection, _sampleIndex[2]);
+    }
 
-        _computeShader.SetInts("sampleIndex", index);
-        _computeShader.SetVector("sampleWeight", hit.barycentricCoordinate);
-
-        //_computeShader.SetMatrix("rMatrix", GetRotationMatrix(lightDirection, 2));
-
-        _computeShader.SetMatrixArray("sampleMatrix", _sampleData[0].sampleMatrix);
+    /// <summary>
+    /// Run the compute shader.
+    /// </summary>
+    private void RunComputeShader()
+    {
+        _computeShader.SetInts("sampleIndex", _sampleIndex);
+        _computeShader.SetVector("sampleWeight", _sampleWeight);
+        _computeShader.SetMatrixArray("sampleMatrix", _sampleMatrix);
 
         _computeShader.Dispatch(_kernelId, 32, 32, 1);
-
-        _lightCookie.Release();
-
-        ToCubemap(_causticsTexture, ref _lightCookie);
-        //ToCubemap(_causticsTexture, ref _testCookie);
-
-        _causticsLight.cookie = _lightCookie;
     }
 
     /// <summary>
@@ -262,6 +281,7 @@ public class Caustics : MonoBehaviour
         _lightCookie.dimension = TextureDimension.Cube;
         _lightCookie.hideFlags = HideFlags.HideAndDontSave;
         _lightCookie.useMipMap = true;
+        _lightCookie.filterMode = FilterMode.Bilinear;
 
         // initialize the caustics light cookie texture2d array
         _causticsTexture = new RenderTexture(256, 256, 16);
@@ -294,14 +314,9 @@ public class Caustics : MonoBehaviour
         _computeShader = Instantiate(Resources.Load<ComputeShader>("Shaders/TextureInterpolate"));
         _kernelId = _computeShader.FindKernel("TextureInterpolate");
 
-        int bufferSize = sizeof(int) * 3 + sizeof(float) * (4 + 12 * 16);
-        _sampleBuffer = new ComputeBuffer(1, bufferSize);
-
-        _sampleData[0].sampleIndex = new Vector4();
-        _sampleData[0].sampleWeight = new Vector4();
-        _sampleData[0].sampleMatrix = new Matrix4x4[12];
-
-        //_sampleBuffer.SetData(_sampleData);
+        _sampleIndex = new int[3];
+        _sampleWeight = new Vector3();
+        _sampleMatrix = new Matrix4x4[12];
 
         _computeShader.SetTexture(_kernelId, "Result", _causticsTexture);
 

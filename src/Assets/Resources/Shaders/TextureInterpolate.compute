@@ -3,6 +3,21 @@
 
 #define TEXTURE_DIMENSIONS 256.0
 
+// Create a RenderTexture with enableRandomWrite
+RWTexture2DArray<float4> Result;
+
+// The textures
+Texture2DArray<float4> Tex[12];
+
+// The index of texture to sample
+int3 sampleIndex;
+
+// The weight of each texture
+float4 sampleWeight;
+
+// The sample correction matrix
+float4x4 sampleMatrix[12];
+
  // Convert an xyz vector to a uvw Texture2DArray sample as if it were a cubemap
 float3 xyz_to_uvw(float3 xyz)
 {
@@ -82,41 +97,16 @@ float3 uvw_to_xyz(float3 uvw)
 	return useComponents;
 }
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-RWTexture2DArray<float4> Result;
-
-Texture2DArray<float4> Tex[12];
-
-int3 sampleIndex;
-
-float4 sampleWeight;
-
-float4x4 sampleMatrix[12];
-
-float4 SampleTexOffset(int index, int3 pos)
-{
-	float3 sampleVec;
-	sampleVec.x = pos.x / TEXTURE_DIMENSIONS;
-	sampleVec.y = pos.y / TEXTURE_DIMENSIONS;
-	sampleVec.z = pos.z;
-
-	sampleVec = normalize(uvw_to_xyz(sampleVec));
-
-	sampleVec = mul((float3x3)sampleMatrix[2], sampleVec);
-
-	sampleVec = xyz_to_uvw(sampleVec);
-
-	return Tex[2][int3(sampleVec.x * TEXTURE_DIMENSIONS, sampleVec.y * TEXTURE_DIMENSIONS, sampleVec.z)];
-}
-
+// Sample the texture on given position
 float4 SampleTex(int index, int3 pos)
 {
+	// The sample positon for sampling texture2d array
 	float3 sampleVec = float3(0.0, 0.0, 0.0);
 	sampleVec.x = pos.x / TEXTURE_DIMENSIONS;
 	sampleVec.y = pos.y / TEXTURE_DIMENSIONS;
 	sampleVec.z = pos.z;
 
+	// Convert the sample vector to sampling a cubemap
 	sampleVec = normalize(uvw_to_xyz(sampleVec));
 
 	if (index == 0)
@@ -208,7 +198,6 @@ float4 SampleTex(int index, int3 pos)
 [numthreads(8, 8, 6)]
 void TextureInterpolate(uint3 id : SV_DispatchThreadID)
 {
-	// TODO: insert actual code here!
 	int3 i = sampleIndex;
 	float4 w = sampleWeight;
 
@@ -218,5 +207,4 @@ void TextureInterpolate(uint3 id : SV_DispatchThreadID)
 
 	Result[int3(id.x, id.y, id.z)] = 
 		w.x * Color0 + w.y * Color1 + w.z * Color2;
-
 }
