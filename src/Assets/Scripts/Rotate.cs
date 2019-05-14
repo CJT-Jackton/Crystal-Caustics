@@ -4,11 +4,12 @@ using UnityEngine;
 
 public class Rotate : MonoBehaviour
 {
+    public Vector3 Center;
     public float speed;
 
     // Update is called once per frame
     void Update()
     {
-        transform.RotateAround(Vector3.zero, Vector3.up, speed * Time.deltaTime);
+        transform.RotateAround(Center, Vector3.up, speed * Time.deltaTime);
     }
 }

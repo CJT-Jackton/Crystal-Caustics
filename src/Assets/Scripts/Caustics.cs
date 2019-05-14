@@ -52,6 +52,8 @@ public class Caustics : MonoBehaviour
     private MeshCollider _meshCollider;
     private Mesh _mesh;
 
+    private RaycastHit[] _raycastHit;
+
     private int[] _sampleIndex;
 
     private Vector3 _sampleWeight;
@@ -87,6 +89,8 @@ public class Caustics : MonoBehaviour
         _causticsLight = GetComponent<Light>();
         _causticsLight.color = transform.parent.gameObject.GetComponent<Renderer>().material.color;
 
+        _raycastHit = new RaycastHit[16];
+
         _meshCollider = GetComponent<MeshCollider>();
         _mesh = GetComponent<MeshCollider>().sharedMesh;
 
@@ -107,8 +111,6 @@ public class Caustics : MonoBehaviour
 
             if (light)
             {
-                RaycastHit hit;
-
                 Vector3 origin = new Vector3();
                 Vector3 direction = new Vector3();
 
@@ -125,37 +127,75 @@ public class Caustics : MonoBehaviour
                 else if (light.type == LightType.Spot)
                 {
                     origin = light.transform.position;
-                    direction = transform.position - light.transform.position;
+                    direction = (transform.position - light.transform.position).normalized;
+                    //Debug.Log($"dot:{Vector3.Dot(light.transform.forward, direction)} cos:{Mathf.Cos(light.spotAngle * Mathf.Deg2Rad)}");
+
+                    if (Vector3.Dot(light.transform.forward, direction) < Mathf.Cos(light.spotAngle * 0.5f * Mathf.Deg2Rad))
+                    {
+                        direction = light.transform.forward;
+                        
+                    }
                 }
 
-                if (Physics.Raycast(origin, direction, out hit, 2, _layerMask))
+                //RaycastHit hit;
+                /*
+                if (Physics.Raycast(origin, direction, out hit, Mathf.Infinity, _layerMask))
                 {
                     if (hit.collider == _meshCollider)
                     {
+                        _causticsLight.intensity = light.intensity * 0.1f;
+
                         Vector3 dirLocal =
                             transform.InverseTransformDirection(direction);
 
                         SetComputeShaderParameter(hit, dirLocal);
                         RunComputeShader();
                     }
+                    else
+                    {
+                        _causticsLight.intensity = 0.0f;
+                    }
+                }*/
+
+                Ray lightRay = new Ray(origin, direction);
+                bool isHit = false;
+
+                if (Physics.RaycastNonAlloc(lightRay, _raycastHit, Mathf.Infinity, _layerMask) > 0)
+                {
+                    foreach (var hit in _raycastHit)
+                    {
+                        if (hit.collider != null &&
+                            hit.collider == _meshCollider)
+                        {
+                            _causticsLight.intensity = light.intensity * 0.075f;
+
+                            Vector3 dirLocal =
+                                transform.InverseTransformDirection(direction);
+
+                            SetComputeShaderParameter(hit, dirLocal);
+                            RunComputeShader();
+
+                            isHit = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if(!isHit)
+                {
+                    _causticsLight.intensity = 0.0f;
                 }
 
                 _lightCookie.Release();
 
                 ToCubemap(_causticsTexture, ref _lightCookie);
-                //ToCubemap(_causticsTexture, ref _testCookie);
+                ToCubemap(_causticsTexture, ref _testCookie);
 
                 _causticsLight.cookie = _lightCookie;
 
                 Color lightColor = light.color;
-                lightColor *= transform.parent.gameObject.GetComponent<Renderer>().material.color;
-                float absorbDistance = transform.parent.gameObject
-                    .GetComponent<Renderer>().material
-                    .GetFloat("_ATDistance");
-                lightColor *= transform.parent.gameObject
-                    .GetComponent<Renderer>().material
-                    .GetColor("_TransmittanceColor");
-                //_causticsLight.color = lightColor;
+                lightColor *= transform.parent.gameObject.GetComponent<Renderer>().material.GetColor("_BaseColor");
+                _causticsLight.color = lightColor;
             }
         }
     }
