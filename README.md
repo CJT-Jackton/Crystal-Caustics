@@ -6,7 +6,7 @@ This project approximate caustics of crystal in real-time using the physically-b
 
 ![thumbnail](https://raw.githubusercontent.com/CJT-Jackton/Crystal-Caustics/master/screenshots/screenshot02.png "Crystal caustics in Unity")
 
-Caustics is a common optical phenomenon that light ray reflected or refracted by an object and created a pattern of light. It usually required track the path of light ray go through the object. However ray tracing is too computationally expensive and can't be done in real-time.
+Caustics is a common optical phenomenon that light ray reflected or refracted by an object and created a pattern of light. It usually required track the path of light ray go through the object. However ray tracing is too computationally expensive and can't be done in real-time. This project use pre-render caustics map and light cookie to achieve the approximated effects. See the demo [here](https://youtu.be/-mrXdcObRNk).
 
 ## Getting started
 
@@ -31,4 +31,3 @@ For each object that has caustics when illuminated, surround it with a mesh boun
 Unity 2019.1.0
 
 - HD Render Pipeline
-- Post Processing Stack v2
